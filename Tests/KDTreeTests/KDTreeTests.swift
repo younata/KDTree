@@ -4,29 +4,57 @@ import XCTest
 final class KDTreeTests: XCTestCase {
     func testInitializingFromArray() {
         let elements: [TestElement] = [
-            TestElement(x: 1, y: 5, z: 1),
-            TestElement(x: 1, y: 3, z: 2),
-            TestElement(x: 1, y: 5, z: 3),
-            TestElement(x: 1, y: 3, z: 4),
+            TestElement(x: 1, y: 9, z: 1),
+            TestElement(x: 3, y: 6, z: 2),
+            TestElement(x: 0, y: 3, z: 3),
+            TestElement(x: 5, y: 1, z: 4),
 
-            TestElement(x: 2, y: 5, z: 5),
-            TestElement(x: 2, y: 3, z: 6),
-            TestElement(x: 2, y: 5, z: 7),
-            TestElement(x: 2, y: 3, z: 8)
+            TestElement(x: 2, y: 2, z: 5),
+            TestElement(x: 8, y: 5, z: 6),
+            TestElement(x: 4, y: 8, z: 7),
+            TestElement(x: 6, y: 4, z: 8)
         ]
 
         let tree = KDTree(collection: elements)
 
-        XCTAssertNotNil(tree.rootNode)
-        //                  X         Y      Z
-        XCTAssertEqual(tree.rootNode?.value, TestElement(x: 1, y: 5, z: 1))
-        XCTAssertEqual(tree.rootNode?.left?.value, TestElement(x: 1, y: 3, z: 2))
-        XCTAssertEqual(tree.rootNode?.right?.value, TestElement(x: 1, y: 5, z: 3))
-        XCTAssertEqual(tree.rootNode?.left?.right?.value, TestElement(x: 1, y: 3, z: 4))
-        XCTAssertEqual(tree.rootNode?.right?.right?.value, TestElement(x: 2, y: 5, z: 5))
-        XCTAssertEqual(tree.rootNode?.left?.right?.right?.value, TestElement(x: 2, y: 3, z: 6))
-        XCTAssertEqual(tree.rootNode?.right?.right?.right?.value, TestElement(x: 2, y: 5, z: 7))
-        XCTAssertEqual(tree.rootNode?.left?.right?.right?.right?.value, TestElement(x: 2, y: 3, z: 8))
+        func assertNoChildren<T: KDElement>(node: KDNode<T>?, line: UInt = #line) {
+            XCTAssertNotNil(node, line: line)
+            XCTAssertNil(node?.left, line: line)
+            XCTAssertNil(node?.right, line: line)
+        }
+
+        // Center: (4, 8, 7)
+        XCTAssertEqual(tree.rootNode?.value, TestElement(x: 4, y: 8, z: 7))
+
+
+        /* Left:
+            - (3, 6, 2)
+            - (0, 3, 3)
+            - (1, 9, 1)
+            - (2, 2, 5)
+         */
+
+        XCTAssertEqual(tree.rootNode?.left?.value, TestElement(x: 3, y: 6, z: 2))
+        XCTAssertEqual(tree.rootNode?.left?.right?.value, TestElement(x: 1, y: 9, z: 1))
+        assertNoChildren(node: tree.rootNode?.left?.right)
+
+        XCTAssertEqual(tree.rootNode?.left?.left?.value, TestElement(x: 2, y: 2, z: 5))
+        XCTAssertNil(tree.rootNode?.left?.left?.right)
+        XCTAssertEqual(tree.rootNode?.left?.left?.left?.value, TestElement(x: 0, y: 3, z: 3))
+        assertNoChildren(node: tree.rootNode?.left?.left?.left)
+
+        /* Right:
+            - (5, 1, 4)
+            - (6, 4, 8)
+            - (8, 5, 6)
+         */
+
+        XCTAssertEqual(tree.rootNode?.right?.value, TestElement(x: 6, y: 4, z: 8))
+
+        XCTAssertEqual(tree.rootNode?.right?.left?.value, TestElement(x: 5, y: 1, z: 4))
+        XCTAssertEqual(tree.rootNode?.right?.right?.value, TestElement(x: 8, y: 5, z: 6))
+        assertNoChildren(node: tree.rootNode?.right?.left)
+        assertNoChildren(node: tree.rootNode?.right?.right)
     }
 
     func testFindSmallestValueForADimension() {
@@ -96,26 +124,10 @@ final class KDTreeTests: XCTestCase {
         }
     }
 
-    func testPerformanceCreatingTrees() {
-        let maxValue: Double = 200
-        var generator = SystemRandomNumberGenerator()
-        let elements: [TestElement] = (0..<20000).map { _ in
-            return TestElement(
-                x: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
-                y: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
-                z: generator.nextDouble(upperBound: maxValue) - (maxValue / 2)
-            )
-        }
-
-        self.measure {
-            let _ = KDTree(collection: elements)
-        }
-    }
-
     func testPerformanceNearestNeighbor() {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
-        let elements: [TestElement] = (0..<20000).map { _ in
+        let elements: [TestElement] = (0..<200000).map { _ in
             return TestElement(
                 x: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
                 y: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
@@ -133,7 +145,7 @@ final class KDTreeTests: XCTestCase {
         }
     }
 
-    func testPerformanceVsNaive() {
+    func testNearestNeighborVsNaive() {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
         let elements: [TestElement] = (0..<20000).map { _ in
@@ -184,8 +196,8 @@ final class KDTreeTests: XCTestCase {
         ("testFindSmallestValueForADimension", testFindSmallestValueForADimension),
         ("testFindClosestValue", testFindClosestValue),
         ("testNearestNeighborFuzzTest", testNearestNeighborFuzzTest),
-        ("testPerformanceCreatingTrees", testPerformanceCreatingTrees),
         ("testPerformanceNearestNeighbor", testPerformanceNearestNeighbor),
+        ("testNearestNeighborVsNaive", testNearestNeighborVsNaive),
     ]
 }
 

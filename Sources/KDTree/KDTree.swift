@@ -10,22 +10,7 @@ public struct KDTree<Element: KDElement> {
     var rootNode: KDNode<Element>?
 
     public init(collection: [Element]) {
-        self.rootNode = nil
-        for value in collection {
-            self.insert(value: value)
-        }
-    }
-
-    public init() {
-        self.rootNode = nil
-    }
-
-    public mutating func insert(value: Element) {
-        if self.rootNode == nil {
-            self.rootNode = KDNode(value: value)
-        } else {
-            self.rootNode?.insert(value: value, dimension: 1)
-        }
+        self.rootNode = KDNode(elements: collection, dimension: 0, totalDimensions: DIMENSIONS_SUPPORTED)
     }
 
     public func smallestElement(dimension: Int) -> Element? {
@@ -57,21 +42,24 @@ class KDNode<Element: KDElement> {
         self.right = nil
     }
 
-    fileprivate func insert(value: Element, dimension: Int) {
-        if self.value.effectivelyEquals(value) {
-            return // do nothing
-        } else if value.get(dimension: dimension) < self.value.get(dimension: dimension) {
-            if self.left != nil {
-                self.left?.insert(value: value, dimension: (dimension + 1) % DIMENSIONS_SUPPORTED)
-            } else {
-                self.left = KDNode(value: value)
-            }
+    init?(elements: [Element], dimension: Int, totalDimensions: Int) {
+        guard elements.isEmpty == false else { return nil }
+        let sortedElements = elements.sorted { $0.get(dimension: dimension) < $1.get(dimension: dimension) }
+
+        let medianIndex = sortedElements.count / 2
+        self.value = sortedElements[medianIndex]
+
+        let nextDimension = (dimension + 1) % totalDimensions
+
+        if medianIndex > 0 {
+            self.left = KDNode(elements: Array(sortedElements[0..<medianIndex]), dimension: nextDimension, totalDimensions: totalDimensions)
         } else {
-            if self.right != nil {
-                self.right?.insert(value: value, dimension: (dimension + 1) % DIMENSIONS_SUPPORTED)
-            } else {
-                self.right = KDNode(value: value)
-            }
+            self.left = nil
+        }
+        if (medianIndex + 1) < sortedElements.count {
+            self.right = KDNode(elements: Array(sortedElements[(medianIndex+1)..<sortedElements.count]), dimension: nextDimension, totalDimensions: totalDimensions)
+        } else {
+            self.right = nil
         }
     }
 
