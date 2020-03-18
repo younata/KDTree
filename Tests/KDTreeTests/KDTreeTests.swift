@@ -77,7 +77,18 @@ final class KDTreeTests: XCTestCase {
         XCTAssertEqual(tree.smallestElement(dimension: 2), TestElement(x: 4, y: 10, z: 0))
     }
 
-    func testFindClosestValue() {
+    private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, range: Double, line: UInt = #line) throws {
+        let nearestNeighbor: TestElement = try XCTUnwrap(tree.nearestNeighbor(to: searchElement, within: range))
+        if nearestNeighbor != expected {
+            let receivedDistance = sqrt(nearestNeighbor.distance(to: searchElement))
+            let expectedDistance = sqrt(expected.distance(to: searchElement))
+            if abs(receivedDistance - expectedDistance) > 1e-6 { // elements are not equidistant.
+                XCTFail("\(nearestNeighbor) is not closest element to \(searchElement), within \(range). Expected \(expected). Expected is \(expectedDistance) units away and received is \(receivedDistance) units away.", line: line)
+            }
+        }
+    }
+
+    func testFindNearestNeighbor() throws {
         let elements: [TestElement] = [
             TestElement(x: 4, y: 10, z: 0),
             TestElement(x: 3, y: 11, z: 2),
@@ -92,12 +103,14 @@ final class KDTreeTests: XCTestCase {
 
         let tree = KDTree(collection: elements)
 
-        XCTAssertEqual(tree.nearestNeighbor(to: TestElement(x: 8, y: 4, z: 5), within: 2), TestElement(x: 8, y: 4, z: 5)) // Exact match/Element actually exists in the tree
+        // Exact match/Element actually exists in the tree
+        try assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 8, y: 4, z: 5), expected: TestElement(x: 8, y: 4, z: 5), range: 2)
 
-        XCTAssertEqual(tree.nearestNeighbor(to: TestElement(x: 2.5, y: 11.5, z: 4), within: 2), TestElement(x: 2, y: 12, z: 3)) // Searched for element doesn't exist, finds the closest to it.
+        // Searched for element doesn't exist, finds the closest to it.
+        try assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 2.5, y: 11.5, z: 4), expected: TestElement(x: 2, y: 12, z: 3), range: 2)
     }
 
-    func testNearestNeighborFuzzTest() {
+    func testNearestNeighborFuzzTest() throws {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
         let elements: [TestElement] = (0..<2000).map { _ in
@@ -120,7 +133,7 @@ final class KDTreeTests: XCTestCase {
             }!
 
             let tree = KDTree(collection: elements)
-            XCTAssertEqual(tree.nearestNeighbor(to: searchingElement, within: 1), nearestNeighborNaiveSolution)
+            try assertNearestNeighbor(tree: tree, searchElement: searchingElement, expected: nearestNeighborNaiveSolution, range: 1)
         }
     }
 
@@ -194,14 +207,14 @@ final class KDTreeTests: XCTestCase {
     static var allTests = [
         ("testInitializingFromArray", testInitializingFromArray),
         ("testFindSmallestValueForADimension", testFindSmallestValueForADimension),
-        ("testFindClosestValue", testFindClosestValue),
+        ("testFindNearestNeighbor", testFindNearestNeighbor),
         ("testNearestNeighborFuzzTest", testNearestNeighborFuzzTest),
         ("testPerformanceNearestNeighbor", testPerformanceNearestNeighbor),
         ("testNearestNeighborVsNaive", testNearestNeighborVsNaive),
     ]
 }
 
-struct TestElement: KDElement, Equatable {
+struct TestElement: KDElement, Equatable, CustomStringConvertible {
     let x: Double
     let y: Double
     let z: Double
@@ -209,11 +222,15 @@ struct TestElement: KDElement, Equatable {
     func distance(to other: TestElement) -> Double {
         return pow(self.x - other.x, 2) + pow(self.y - other.y, 2) + pow(self.z - other.z, 2)
     }
+
+    var description: String {
+        return "(\(self.x), \(self.y), \(self.z))"
+    }
 }
 
 extension RandomNumberGenerator {
     @inlinable public mutating func nextDouble(upperBound: Double) -> Double {
-        return Double(self.next(upperBound: UInt(upperBound)))
+        return Double(self.next(upperBound: UInt(upperBound * 256))) / 256
     }
 }
 
