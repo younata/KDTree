@@ -77,8 +77,10 @@ final class KDTreeTests: XCTestCase {
         XCTAssertEqual(tree.smallestElement(dimension: 2), TestElement(x: 4, y: 10, z: 0))
     }
 
-    private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, range: Double, line: UInt = #line) throws {
-        let nearestNeighbor: TestElement = try XCTUnwrap(tree.nearestNeighbor(to: searchElement, within: range))
+    private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, range: Double, line: UInt = #line) {
+        guard let nearestNeighbor: TestElement = tree.nearestNeighbor(to: searchElement, within: range) else {
+            XCTFail("Unable to calculate nearest neighbor: received nil.", line: line)
+        }
         if nearestNeighbor != expected {
             let receivedDistance = sqrt(nearestNeighbor.distance(to: searchElement))
             let expectedDistance = sqrt(expected.distance(to: searchElement))
@@ -88,7 +90,7 @@ final class KDTreeTests: XCTestCase {
         }
     }
 
-    func testFindNearestNeighbor() throws {
+    func testFindNearestNeighbor() {
         let elements: [TestElement] = [
             TestElement(x: 4, y: 10, z: 0),
             TestElement(x: 3, y: 11, z: 2),
@@ -104,13 +106,13 @@ final class KDTreeTests: XCTestCase {
         let tree = KDTree(collection: elements)
 
         // Exact match/Element actually exists in the tree
-        try assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 8, y: 4, z: 5), expected: TestElement(x: 8, y: 4, z: 5), range: 2)
+        assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 8, y: 4, z: 5), expected: TestElement(x: 8, y: 4, z: 5), range: 2)
 
         // Searched for element doesn't exist, finds the closest to it.
-        try assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 2.5, y: 11.5, z: 4), expected: TestElement(x: 2, y: 12, z: 3), range: 2)
+        assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 2.5, y: 11.5, z: 4), expected: TestElement(x: 2, y: 12, z: 3), range: 2)
     }
 
-    func testNearestNeighborFuzzTest() throws {
+    func testNearestNeighborFuzzTest() {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
         let elements: [TestElement] = (0..<2000).map { _ in
@@ -133,7 +135,7 @@ final class KDTreeTests: XCTestCase {
             }!
 
             let tree = KDTree(collection: elements)
-            try assertNearestNeighbor(tree: tree, searchElement: searchingElement, expected: nearestNeighborNaiveSolution, range: 1)
+            assertNearestNeighbor(tree: tree, searchElement: searchingElement, expected: nearestNeighborNaiveSolution, range: 1)
         }
     }
 
