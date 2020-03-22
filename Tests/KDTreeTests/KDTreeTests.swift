@@ -80,6 +80,7 @@ final class KDTreeTests: XCTestCase {
     private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, range: Double, line: UInt = #line) {
         guard let nearestNeighbor: TestElement = tree.nearestNeighbor(to: searchElement, within: range) else {
             XCTFail("Unable to calculate nearest neighbor: received nil.", line: line)
+            return
         }
         if nearestNeighbor != expected {
             let receivedDistance = sqrt(nearestNeighbor.distance(to: searchElement))
