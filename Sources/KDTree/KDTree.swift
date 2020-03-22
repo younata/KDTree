@@ -125,8 +125,13 @@ private extension KDElement {
         return abs(self.z - otherElement.z) < 1e-6
     }
 
-    // Quick way to estimate distance to the other element (it's only off
+    // Quick way to estimate distance to the other element, for comparing two elements only.
     func estimateDistance(to otherElement: Self) -> Double {
-        return pow(self.x - otherElement.x, 2) + pow(self.y - otherElement.y, 2) + pow(self.z - otherElement.z, 2)
+        let x = self.x - otherElement.x
+        let y = self.y - otherElement.y
+        let z = self.z - otherElement.z
+        return (x * x) + (y * y) + (z * z)
+        // Apparently, (a * a) is just faster than using pow(a, 2).
+        // See KDTreeTests.testPerformancePow2VsNaiveSquaring for example.
     }
 }

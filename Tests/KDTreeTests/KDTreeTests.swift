@@ -204,6 +204,34 @@ final class KDTreeTests: XCTestCase {
         XCTAssertLessThan(treeTimes.mean(), naiveTimes.mean())
     }
 
+    func testPerformancePow2VsNaiveSquaring() {
+        var powTimes: [TimeInterval] = []
+        var naiveTimes: [TimeInterval] = []
+        var generator = SystemRandomNumberGenerator()
+
+        for _ in 0..<1000 {
+            let x = generator.nextDouble(upperBound: 1000)
+
+            let naiveStart = Date()
+            let naiveValue = (x * x)
+            let naiveEnd = Date()
+            naiveTimes.append(naiveEnd.timeIntervalSince(naiveStart))
+
+            let powStart = Date()
+            let powValue = pow(x, 2.0)
+            let powEnd = Date()
+            powTimes.append(powEnd.timeIntervalSince(powStart))
+
+            XCTAssertEqual(naiveValue, powValue, accuracy: 1e-6)
+        }
+
+        let speedUp = powTimes.mean() / naiveTimes.mean()
+        print("Pow time average:   \(powTimes.mean())")
+        print("Naive time average: \(naiveTimes.mean())")
+        print("(x * x) is \(speedUp) times faster than using pow(x, 2)")
+        XCTAssertLessThan(naiveTimes.mean(), powTimes.mean())
+    }
+
     static var allTests = [
         ("testInitializingFromArray", testInitializingFromArray),
         ("testFindSmallestValueForADimension", testFindSmallestValueForADimension),
@@ -211,6 +239,7 @@ final class KDTreeTests: XCTestCase {
         ("testNearestNeighborFuzzTest", testNearestNeighborFuzzTest),
         ("testPerformanceNearestNeighbor", testPerformanceNearestNeighbor),
         ("testNearestNeighborVsNaive", testNearestNeighborVsNaive),
+        ("testPerformancePow2VsNaiveSquaring", testPerformancePow2VsNaiveSquaring),
     ]
 }
 
