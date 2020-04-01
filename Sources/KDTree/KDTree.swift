@@ -24,7 +24,7 @@ public struct KDTree<Element: KDElement> {
         return rootNode.nearestNeighbor(
             to: element,
             currentDimension: 0,
-            radius: pow(radius, 2), // we aren't sqrt'ing distances in this search.
+            radius: radius * radius, // we aren't sqrt'ing distances in this search.
             closestElement: rootNode.value,
             closestDistance: Double.infinity
         ).0
