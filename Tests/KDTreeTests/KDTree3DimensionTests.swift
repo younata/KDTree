@@ -1,8 +1,8 @@
 import XCTest
 @testable import KDTree
 
-final class KDTreeTests: XCTestCase {
-    func testInitializingFromArray() {
+final class KDTree3DimensionTests: XCTestCase {
+    func testInitializingFromArray() throws {
         let elements: [TestElement] = [
             TestElement(x: 1, y: 9, z: 1),
             TestElement(x: 3, y: 6, z: 2),
@@ -15,7 +15,7 @@ final class KDTreeTests: XCTestCase {
             TestElement(x: 6, y: 4, z: 8)
         ]
 
-        let tree = KDTree(collection: elements)
+        let tree = try KDTree(collection: elements)
 
         func assertNoChildren<T: KDElement>(node: KDNode<T>?, line: UInt = #line) {
             XCTAssertNotNil(node, line: line)
@@ -57,7 +57,7 @@ final class KDTreeTests: XCTestCase {
         assertNoChildren(node: tree.rootNode?.right?.right)
     }
 
-    func testFindSmallestValueForADimension() {
+    func testFindSmallestValueForADimension() throws {
         let elements: [TestElement] = [
             TestElement(x: 4, y: 10, z: 0),
             TestElement(x: 3, y: 11, z: 2),
@@ -70,7 +70,7 @@ final class KDTreeTests: XCTestCase {
             TestElement(x: 3, y: 9, z: 8)
         ]
 
-        let tree = KDTree(collection: elements)
+        let tree = try KDTree(collection: elements)
 
         XCTAssertEqual(tree.smallestElement(dimension: 0), TestElement(x: 1, y: 5, z: 6))
         XCTAssertEqual(tree.smallestElement(dimension: 1), TestElement(x: 8, y: 4, z: 5))
@@ -91,7 +91,7 @@ final class KDTreeTests: XCTestCase {
         }
     }
 
-    func testFindNearestNeighbor() {
+    func testFindNearestNeighbor() throws {
         let elements: [TestElement] = [
             TestElement(x: 4, y: 10, z: 0),
             TestElement(x: 3, y: 11, z: 2),
@@ -104,7 +104,7 @@ final class KDTreeTests: XCTestCase {
             TestElement(x: 3, y: 9, z: 8)
         ]
 
-        let tree = KDTree(collection: elements)
+        let tree = try KDTree(collection: elements)
 
         // Exact match/Element actually exists in the tree
         assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 8, y: 4, z: 5), expected: TestElement(x: 8, y: 4, z: 5), range: 2)
@@ -113,7 +113,7 @@ final class KDTreeTests: XCTestCase {
         assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 2.5, y: 11.5, z: 4), expected: TestElement(x: 2, y: 12, z: 3), range: 2)
     }
 
-    func testNearestNeighborFuzzTest() {
+    func testNearestNeighborFuzzTest() throws {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
         let elements: [TestElement] = (0..<2000).map { _ in
@@ -135,12 +135,12 @@ final class KDTreeTests: XCTestCase {
                 $0.distance(to: searchingElement) < $1.distance(to: searchingElement)
             }!
 
-            let tree = KDTree(collection: elements)
+            let tree = try KDTree(collection: elements)
             assertNearestNeighbor(tree: tree, searchElement: searchingElement, expected: nearestNeighborNaiveSolution, range: 1)
         }
     }
 
-    func testPerformanceNearestNeighbor() {
+    func testPerformanceNearestNeighbor() throws {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
         let elements: [TestElement] = (0..<200000).map { _ in
@@ -151,7 +151,7 @@ final class KDTreeTests: XCTestCase {
             )
         }
 
-        let tree = KDTree(collection: elements)
+        let tree = try KDTree(collection: elements)
         self.measure {
             _ = tree.nearestNeighbor(to: TestElement(
                 x: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
@@ -161,7 +161,7 @@ final class KDTreeTests: XCTestCase {
         }
     }
 
-    func testNearestNeighborVsNaive() {
+    func testNearestNeighborVsNaive() throws {
         let maxValue: Double = 200
         var generator = SystemRandomNumberGenerator()
         let elements: [TestElement] = (0..<20000).map { _ in
@@ -172,7 +172,7 @@ final class KDTreeTests: XCTestCase {
             )
         }
 
-        let tree = KDTree(collection: elements)
+        let tree = try KDTree(collection: elements)
 
         var treeTimes: [TimeInterval] = []
         for _ in 0..<100 {
@@ -244,31 +244,4 @@ final class KDTreeTests: XCTestCase {
         ("testNearestNeighborVsNaive", testNearestNeighborVsNaive),
         ("testPerformancePow2VsNaiveSquaring", testPerformancePow2VsNaiveSquaring),
     ]
-}
-
-struct TestElement: KDElement, Equatable, CustomStringConvertible {
-    let x: Double
-    let y: Double
-    let z: Double
-
-    func distance(to other: TestElement) -> Double {
-        return pow(self.x - other.x, 2) + pow(self.y - other.y, 2) + pow(self.z - other.z, 2)
-    }
-
-    var description: String {
-        return "(\(self.x), \(self.y), \(self.z))"
-    }
-}
-
-extension RandomNumberGenerator {
-    @inlinable public mutating func nextDouble(upperBound: Double) -> Double {
-        return Double(self.next(upperBound: UInt(upperBound * 256))) / 256
-    }
-}
-
-extension Array where Element == Double {
-    func mean() -> Double {
-        guard self.isEmpty == false else { return .nan }
-        return self.reduce(0, +) / Double(self.count)
-    }
 }

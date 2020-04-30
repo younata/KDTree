@@ -1,16 +1,20 @@
 public protocol KDElement {
-    var x: Double { get }
-    var y: Double { get }
-    var z: Double { get }
+    var values: [Double] { get }
 }
 
-private let DIMENSIONS_SUPPORTED = 3
+public enum KDTreeError: Error {
+    case dimensionsDiffer
+}
 
 public struct KDTree<Element: KDElement> {
     var rootNode: KDNode<Element>?
 
-    public init(collection: [Element]) {
-        self.rootNode = KDNode(elements: collection, dimension: 0, totalDimensions: DIMENSIONS_SUPPORTED)
+    public init(collection: [Element]) throws {
+        guard let supportedDimensions = collection.first?.values.count,
+            collection.allSatisfy({ $0.values.count == supportedDimensions }) else {
+                throw KDTreeError.dimensionsDiffer
+        }
+        self.rootNode = KDNode(elements: collection, dimension: 0, totalDimensions: supportedDimensions)
     }
 
     public func smallestElement(dimension: Int) -> Element? {
@@ -35,6 +39,8 @@ class KDNode<Element: KDElement> {
     let value: Element
     var left: KDNode<Element>?
     var right: KDNode<Element>?
+
+    private var totalDimensions: Int { self.value.values.count }
 
     init(value: Element) {
         self.value = value
@@ -66,11 +72,11 @@ class KDNode<Element: KDElement> {
     fileprivate func smallestElement(dimension: Int, treeDimension: Int) -> Element {
         if treeDimension == dimension {
             guard let left = self.left else { return self.value }
-            return left.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % DIMENSIONS_SUPPORTED)
+            return left.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % self.totalDimensions)
         } else {
             return [
-                self.left?.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % DIMENSIONS_SUPPORTED),
-                self.right?.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % DIMENSIONS_SUPPORTED),
+                self.left?.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % self.totalDimensions),
+                self.right?.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % self.totalDimensions),
                 self.value
                 ].compactMap { $0 }.min { $0.get(dimension: dimension) < $1.get(dimension: dimension) } ?? self.value
         }
@@ -88,7 +94,7 @@ class KDNode<Element: KDElement> {
             bestDistance = currentDistance
         }
 
-        let nextDimension = (currentDimension + 1) % DIMENSIONS_SUPPORTED
+        let nextDimension = (currentDimension + 1) % self.totalDimensions
         if element.get(dimension: currentDimension) < self.value.get(dimension: currentDimension) {
             if let left = self.left {
                 (bestGuess, bestDistance) = left.nearestNeighbor(to: element, currentDimension: nextDimension, radius: radius, closestElement: bestGuess, closestDistance: bestDistance)
@@ -112,25 +118,19 @@ import Foundation
 
 private extension KDElement {
     func get(dimension: Int) -> Double {
-        switch (dimension % DIMENSIONS_SUPPORTED) {
-        case 0: return self.x
-        case 1: return self.y
-        default: return self.z
-        }
+        return self.values[dimension % self.values.count]
     }
 
     func effectivelyEquals(_ otherElement: Self) -> Bool {
-        guard abs(self.x - otherElement.x) < 1e-6 else { return false }
-        guard abs(self.y - otherElement.y) < 1e-6 else { return false }
-        return abs(self.z - otherElement.z) < 1e-6
+        return zip(self.values, otherElement.values).allSatisfy { abs($0 - $1) < 1e-6 }
     }
 
     // Quick way to estimate distance to the other element, for comparing two elements only.
     func estimateDistance(to otherElement: Self) -> Double {
-        let x = self.x - otherElement.x
-        let y = self.y - otherElement.y
-        let z = self.z - otherElement.z
-        return (x * x) + (y * y) + (z * z)
+        return zip(self.values, otherElement.values).reduce(0) {
+            let difference = ($1.0 - $1.1)
+            return $0 + (difference * difference)
+        }
         // Apparently, (a * a) is just faster than using pow(a, 2).
         // See KDTreeTests.testPerformancePow2VsNaiveSquaring for example.
     }
