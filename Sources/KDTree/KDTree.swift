@@ -22,16 +22,48 @@ public struct KDTree<Element: KDElement> {
         return rootNode.smallestElement(dimension: dimension, treeDimension: 0)
     }
 
-    public func nearestNeighbor(to element: Element, within radius: Double) -> Element? {
-        guard let rootNode = self.rootNode else { return nil }
+    public func nearestNeighbor(to element: Element) -> Element? {
+        guard var best = self.rootNode else { return nil }
 
-        return rootNode.nearestNeighbor(
-            to: element,
-            currentDimension: 0,
-            radius: radius * radius, // we aren't sqrt'ing distances in this search.
-            closestElement: rootNode.value,
-            closestDistance: Double.infinity
-        ).0
+        var stack: [(KDNode<Element>, Int)] = [(best, 0)]
+        var closest = best.value.estimateDistance(to: element)
+
+        while (stack.isEmpty == false) {
+            guard let (branch, dimension) = stack.popLast() else {
+                continue
+            }
+
+            let currentDistance = branch.value.estimateDistance(to: element)
+            let currentDistanceDimension = branch.value.get(dimension: dimension) - element.get(dimension: dimension)
+
+
+            if (currentDistance <= closest) {
+                closest = currentDistance
+                best = branch
+            }
+
+            let nextDimension = (dimension + 1) % branch.value.values.count
+
+            let section: KDNode<Element>?
+            let other: KDNode<Element>?
+
+            if (currentDistanceDimension > 0) {
+                section = branch.left
+                other = branch.right
+            } else {
+                section = branch.right
+                other = branch.left
+            }
+
+            if let section = section {
+                stack.append((section, nextDimension))
+            }
+            if let other = other, (currentDistanceDimension * currentDistanceDimension) < closest {
+                stack.append((other, nextDimension))
+            }
+        }
+
+        return best.value
     }
 }
 
@@ -80,37 +112,6 @@ class KDNode<Element: KDElement> {
                 self.value
                 ].compactMap { $0 }.min { $0.get(dimension: dimension) < $1.get(dimension: dimension) } ?? self.value
         }
-    }
-
-    fileprivate func nearestNeighbor(to element: Element, currentDimension: Int, radius: Double, closestElement: Element, closestDistance: Double) -> (Element, Double) {
-        guard closestDistance > radius else { return (closestElement, closestDistance) }
-
-        var bestGuess = closestElement
-        var bestDistance = closestDistance
-
-        let currentDistance = element.estimateDistance(to: self.value)
-        if currentDistance < bestDistance {
-            bestGuess = self.value
-            bestDistance = currentDistance
-        }
-
-        let nextDimension = (currentDimension + 1) % self.totalDimensions
-        if element.get(dimension: currentDimension) < self.value.get(dimension: currentDimension) {
-            if let left = self.left {
-                (bestGuess, bestDistance) = left.nearestNeighbor(to: element, currentDimension: nextDimension, radius: radius, closestElement: bestGuess, closestDistance: bestDistance)
-            }
-            if let right = self.right {
-                (bestGuess, bestDistance) = right.nearestNeighbor(to: element, currentDimension: nextDimension, radius: radius, closestElement: bestGuess, closestDistance: bestDistance)
-            }
-        } else {
-            if let right = self.right {
-                (bestGuess, bestDistance) = right.nearestNeighbor(to: element, currentDimension: nextDimension, radius: radius, closestElement: bestGuess, closestDistance: bestDistance)
-            }
-            if let left = self.left {
-                (bestGuess, bestDistance) = left.nearestNeighbor(to: element, currentDimension: nextDimension, radius: radius, closestElement: bestGuess, closestDistance: bestDistance)
-            }
-        }
-        return (bestGuess, bestDistance)
     }
 }
 

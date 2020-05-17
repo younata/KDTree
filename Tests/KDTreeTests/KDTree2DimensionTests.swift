@@ -76,8 +76,8 @@ final class KDTree2DimensionTests: XCTestCase {
         XCTAssertEqual(tree.smallestElement(dimension: 1), TestElement(x: 8, y: 4))
     }
 
-    private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, range: Double, line: UInt = #line) {
-        guard let nearestNeighbor: TestElement = tree.nearestNeighbor(to: searchElement, within: range) else {
+    private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, line: UInt = #line) {
+        guard let nearestNeighbor: TestElement = tree.nearestNeighbor(to: searchElement) else {
             XCTFail("Unable to calculate nearest neighbor: received nil.", line: line)
             return
         }
@@ -85,7 +85,7 @@ final class KDTree2DimensionTests: XCTestCase {
             let receivedDistance = sqrt(nearestNeighbor.distance(to: searchElement))
             let expectedDistance = sqrt(expected.distance(to: searchElement))
             if abs(receivedDistance - expectedDistance) > 1e-6 { // elements are not equidistant.
-                XCTFail("\(nearestNeighbor) is not closest element to \(searchElement), within \(range). Expected \(expected). Expected is \(expectedDistance) units away and received is \(receivedDistance) units away.", line: line)
+                XCTFail("\(nearestNeighbor) is not closest element to \(searchElement). Expected \(expected). Expected is \(expectedDistance) units away and received is \(receivedDistance) units away.", line: line)
             }
         }
     }
@@ -106,10 +106,10 @@ final class KDTree2DimensionTests: XCTestCase {
         let tree = try KDTree(collection: elements)
 
         // Exact match/Element actually exists in the tree
-        assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 8, y: 4), expected: TestElement(x: 8, y: 4), range: 2)
+        assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 8, y: 4), expected: TestElement(x: 8, y: 4))
 
         // Searched for element doesn't exist, finds the closest to it.
-        assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 2.5, y: 11.5), expected: TestElement(x: 2, y: 12), range: 2)
+        assertNearestNeighbor(tree: tree, searchElement: TestElement(x: 2.5, y: 11.5), expected: TestElement(x: 2, y: 12))
     }
 
     func testNearestNeighborFuzzTest() throws {
@@ -133,7 +133,7 @@ final class KDTree2DimensionTests: XCTestCase {
             }!
 
             let tree = try KDTree(collection: elements)
-            assertNearestNeighbor(tree: tree, searchElement: searchingElement, expected: nearestNeighborNaiveSolution, range: 1)
+            assertNearestNeighbor(tree: tree, searchElement: searchingElement, expected: nearestNeighborNaiveSolution)
         }
     }
 
@@ -152,7 +152,7 @@ final class KDTree2DimensionTests: XCTestCase {
             _ = tree.nearestNeighbor(to: TestElement(
                 x: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
                 y: generator.nextDouble(upperBound: maxValue) - (maxValue / 2)
-            ), within: 10)
+            ))
         }
     }
 
@@ -174,7 +174,7 @@ final class KDTree2DimensionTests: XCTestCase {
             _ = tree.nearestNeighbor(to: TestElement(
                 x: generator.nextDouble(upperBound: maxValue) - (maxValue / 2),
                 y: generator.nextDouble(upperBound: maxValue) - (maxValue / 2)
-            ), within: 10)
+            ))
             let end = Date()
             treeTimes.append(end.timeIntervalSince(start))
         }
