@@ -17,18 +17,13 @@ public struct KDTree<Element: KDElement> {
         self.rootNode = KDNode(elements: collection, dimension: 0, totalDimensions: supportedDimensions)
     }
 
-    public func smallestElement(dimension: Int) -> Element? {
-        guard let rootNode = self.rootNode else { return nil }
-        return rootNode.smallestElement(dimension: dimension, treeDimension: 0)
-    }
-
     public func nearestNeighbor(to element: Element) -> Element? {
         guard var best = self.rootNode else { return nil }
 
         var stack: [(KDNode<Element>, Int)] = [(best, 0)]
         var closest = best.value.estimateDistance(to: element)
 
-        while (stack.isEmpty == false) {
+        while stack.isEmpty == false {
             guard let (branch, dimension) = stack.popLast() else {
                 continue
             }
@@ -65,6 +60,52 @@ public struct KDTree<Element: KDElement> {
 
         return best.value
     }
+
+    public func nearest(to element: Element, within radius: Double) -> [Element] {
+        let maxDistance = radius * radius
+        var closest: [Element] = []
+        guard let rootBranch = self.rootNode else { return closest }
+
+        var stack: [(KDNode<Element>, Int)] = [(rootBranch, 0)]
+
+        while stack.isEmpty == false {
+            guard let (branch, dimension) = stack.popLast() else {
+                continue
+            }
+
+            let currentDistance = branch.value.estimateDistance(to: element)
+
+            if currentDistance <= maxDistance {
+                closest.append(branch.value)
+            }
+
+            let currentDistanceDimension = branch.value.get(dimension: dimension) - element.get(dimension: dimension)
+
+            let section: KDNode<Element>?
+            let other: KDNode<Element>?
+
+            if (currentDistanceDimension > 0) {
+                section = branch.left
+                other = branch.right
+            } else {
+                section = branch.right
+                other = branch.left
+            }
+
+            let nextDimension = (dimension + 1) % branch.value.values.count
+
+            if let section = section {
+                stack.append((section, nextDimension))
+            }
+            if let other = other, (currentDistanceDimension * currentDistanceDimension) < maxDistance {
+                stack.append((other, nextDimension))
+            }
+        }
+
+        return closest.sorted {
+            element.estimateDistance(to: $0) < element.estimateDistance(to: $1)
+        }
+    }
 }
 
 class KDNode<Element: KDElement> {
@@ -98,19 +139,6 @@ class KDNode<Element: KDElement> {
             self.right = KDNode(elements: Array(sortedElements[(medianIndex+1)..<sortedElements.count]), dimension: nextDimension, totalDimensions: totalDimensions)
         } else {
             self.right = nil
-        }
-    }
-
-    fileprivate func smallestElement(dimension: Int, treeDimension: Int) -> Element {
-        if treeDimension == dimension {
-            guard let left = self.left else { return self.value }
-            return left.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % self.totalDimensions)
-        } else {
-            return [
-                self.left?.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % self.totalDimensions),
-                self.right?.smallestElement(dimension: dimension, treeDimension: (treeDimension + 1) % self.totalDimensions),
-                self.value
-                ].compactMap { $0 }.min { $0.get(dimension: dimension) < $1.get(dimension: dimension) } ?? self.value
         }
     }
 }

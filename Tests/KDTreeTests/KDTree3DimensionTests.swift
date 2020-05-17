@@ -2,6 +2,7 @@ import XCTest
 @testable import KDTree
 
 final class KDTree3DimensionTests: XCTestCase {
+    // MARK: - Initialization
     func testInitializingFromArray() throws {
         let elements: [TestElement] = [
             TestElement(x: 1, y: 9, z: 1),
@@ -57,26 +58,7 @@ final class KDTree3DimensionTests: XCTestCase {
         assertNoChildren(node: tree.rootNode?.right?.right)
     }
 
-    func testFindSmallestValueForADimension() throws {
-        let elements: [TestElement] = [
-            TestElement(x: 4, y: 10, z: 0),
-            TestElement(x: 3, y: 11, z: 2),
-            TestElement(x: 2, y: 12, z: 3),
-            TestElement(x: 5, y: 13, z: 4),
-
-            TestElement(x: 8, y: 4, z: 5),
-            TestElement(x: 1, y: 5, z: 6),
-            TestElement(x: 6, y: 7, z: 7),
-            TestElement(x: 3, y: 9, z: 8)
-        ]
-
-        let tree = try KDTree(collection: elements)
-
-        XCTAssertEqual(tree.smallestElement(dimension: 0), TestElement(x: 1, y: 5, z: 6))
-        XCTAssertEqual(tree.smallestElement(dimension: 1), TestElement(x: 8, y: 4, z: 5))
-        XCTAssertEqual(tree.smallestElement(dimension: 2), TestElement(x: 4, y: 10, z: 0))
-    }
-
+    // MARK: - Nearest Neighbor
     private func assertNearestNeighbor(tree: KDTree<TestElement>, searchElement: TestElement, expected: TestElement, line: UInt = #line) {
         guard let nearestNeighbor: TestElement = tree.nearestNeighbor(to: searchElement) else {
             XCTFail("Unable to calculate nearest neighbor: received nil.", line: line)
@@ -235,13 +217,35 @@ final class KDTree3DimensionTests: XCTestCase {
         XCTAssertLessThan(naiveTimes.mean(), powTimes.mean())
     }
 
+    // MARK: - Nearest Neighbors
+
+    func testNearest_returnsAllNodesWithinRadiusOfElement() throws {
+        let elements: [TestElement] = [
+            TestElement(x: 4, y: 10, z: 0), // ~8.2
+            TestElement(x: 3, y: 11, z: 2), // ~8.8
+            TestElement(x: 2, y: 12, z: 3), // ~10.0
+            TestElement(x: 5, y: 13, z: 4), // ~9.5
+            TestElement(x: 8, y: 4, z: 5),  // 1
+            TestElement(x: 1, y: 5, z: 6),  // ~7.3
+            TestElement(x: 6, y: 7, z: 7),  // ~4.7
+            TestElement(x: 3, y: 9, z: 8),  // ~8.1
+        ]
+
+        let tree = try KDTree(collection: elements)
+
+        XCTAssertEqual(tree.nearest(to: TestElement(x: 8, y: 4, z: 4), within: 5), [
+            TestElement(x: 8, y: 4, z: 5),
+            TestElement(x: 6, y: 7, z: 7)
+        ])
+    }
+
     static var allTests = [
         ("testInitializingFromArray", testInitializingFromArray),
-        ("testFindSmallestValueForADimension", testFindSmallestValueForADimension),
         ("testFindNearestNeighbor", testFindNearestNeighbor),
         ("testNearestNeighborFuzzTest", testNearestNeighborFuzzTest),
         ("testPerformanceNearestNeighbor", testPerformanceNearestNeighbor),
         ("testNearestNeighborVsNaive", testNearestNeighborVsNaive),
         ("testPerformancePow2VsNaiveSquaring", testPerformancePow2VsNaiveSquaring),
+        ("testNearest_returnsAllNodesWithinRadiusOfElement", testNearest_returnsAllNodesWithinRadiusOfElement),
     ]
 }
