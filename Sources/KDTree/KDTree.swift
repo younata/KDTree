@@ -1,13 +1,13 @@
-public protocol KDElement {
+public protocol KDElement: Sendable {
     var values: [Double] { get }
 }
 
-public enum KDTreeError: Error {
+public enum KDTreeError: Error, Sendable {
     case dimensionsDiffer
 }
 
-public struct KDTree<Element: KDElement> {
-    var rootNode: KDNode<Element>?
+public struct KDTree<Element: KDElement>: Sendable {
+    let rootNode: KDNode<Element>?
 
     public init(collection: [Element]) throws {
         guard let supportedDimensions = collection.first?.values.count,
@@ -15,6 +15,14 @@ public struct KDTree<Element: KDElement> {
                 throw KDTreeError.dimensionsDiffer
         }
         self.rootNode = KDNode(elements: collection, dimension: 0, totalDimensions: supportedDimensions)
+    }
+
+    public init(collection: [Element]) async throws {
+        guard let supportedDimensions = collection.first?.values.count,
+            collection.allSatisfy({ $0.values.count == supportedDimensions }) else {
+                throw KDTreeError.dimensionsDiffer
+        }
+        self.rootNode = await KDNode(elements: collection, dimension: 0, totalDimensions: supportedDimensions)
     }
 
     public func nearestNeighbor(to element: Element) -> Element? {
@@ -108,10 +116,10 @@ public struct KDTree<Element: KDElement> {
     }
 }
 
-class KDNode<Element: KDElement> {
+final class KDNode<Element: KDElement>: Sendable {
     let value: Element
-    var left: KDNode<Element>?
-    var right: KDNode<Element>?
+    let left: KDNode<Element>?
+    let right: KDNode<Element>?
 
     private var totalDimensions: Int { self.value.values.count }
 
@@ -140,6 +148,33 @@ class KDNode<Element: KDElement> {
         } else {
             self.right = nil
         }
+    }
+
+    init?(elements: [Element], dimension: Int, totalDimensions: Int) async {
+        guard elements.isEmpty == false else { return nil }
+        let sortedElements = elements.sorted { $0.get(dimension: dimension) < $1.get(dimension: dimension) }
+
+        let medianIndex = sortedElements.count / 2
+        self.value = sortedElements[medianIndex]
+
+        let nextDimension = (dimension + 1) % totalDimensions
+
+        async let leftNode: KDNode? = {
+            if medianIndex > 0 {
+                return KDNode(elements: Array(sortedElements[0..<medianIndex]), dimension: nextDimension, totalDimensions: totalDimensions)
+            } else {
+                return nil
+            }
+        }()
+        async let rightNode: KDNode? = {
+            if (medianIndex + 1) < sortedElements.count {
+                return KDNode(elements: Array(sortedElements[(medianIndex+1)..<sortedElements.count]), dimension: nextDimension, totalDimensions: totalDimensions)
+            } else {
+                return nil
+            }
+        }()
+        self.left = await leftNode
+        self.right = await rightNode
     }
 }
 
